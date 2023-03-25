@@ -4,6 +4,7 @@ import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 
 import { api } from "~/utils/api";
+import { Post } from "@prisma/client";
 
 const Home: NextPage = () => {
   const user = useUser();
@@ -22,7 +23,7 @@ const Home: NextPage = () => {
           {!!user.isSignedIn && <SignOutButton />}
         </div>
         <div>
-          {data?.map((post) => (
+          {data?.map((post: Post) => (
             <div key={post.id}>{post.content}</div>
           ))}
         </div>
