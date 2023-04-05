@@ -1,6 +1,23 @@
 import type { GetStaticProps, NextPage } from "next";
 import Head from "next/head";
 import { api } from "~/utils/api";
+import { PostView } from "~/components/postview";
+
+const ProfileFeed = (props: { userId: string }) => {
+  const { data, isLoading: postLoading } = api.post.getPostByUserId.useQuery({
+    userId: props.userId,
+  });
+
+  if (postLoading) return <div>Loading...</div>;
+
+  if(!data || data.length === 0) return <div>User has not posted</div>
+
+  return <div className="flex flex-col">
+    { data.map(fullPost => (
+      <PostView key={fullPost.post.id} { ...fullPost } />
+    )) }
+  </div>
+}
 
 const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
   const { data } = api.profile.getUserByUsername.useQuery({
@@ -35,7 +52,7 @@ const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
           data.username ?? ""
         }`}</div>
         <div className="w-full border-b border-slate-400" />
-        {/* <ProfileFeed userId={data.id} /> */}
+        <ProfileFeed userId={data.id} />
       </PageLayout>
     </>
   );
