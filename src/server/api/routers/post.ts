@@ -13,9 +13,9 @@ import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
 import { Redis } from "@upstash/redis";
 import { filterUserForClient } from "~/server/helper/filterUserForClient";
 // import { prisma } from "~/server/db";
-import { Post } from "@prisma/client";
+import type { Post } from "@prisma/client";
 
-const addUserDataToPost = async (posts: Post[]) => {
+const addUserDataToPosts = async (posts: Post[]) => {
   const users = (
     await clerkClient.users.getUserList({
       userId: posts.map((post) => post.authorId),
@@ -57,6 +57,23 @@ const ratelimit = new Ratelimit({
 });
 
 export const postRouter = createTRPCRouter({
+  getPostById: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const post = await ctx.prisma.post.findUnique({
+        where: {
+          id: input.id,
+        },
+      });
+      if (!post) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return (await addUserDataToPosts([post]))[0];
+    }),
+
   getAll: publicProcedure.query(async ({ ctx }) => {
     const posts = await ctx.prisma.post.findMany({
       take: 100,
@@ -64,7 +81,7 @@ export const postRouter = createTRPCRouter({
         createdAt: "desc",
       },
     });
-    return addUserDataToPost(posts);
+    return addUserDataToPosts(posts);
   }),
 
   getPostByUserId: publicProcedure
@@ -74,17 +91,19 @@ export const postRouter = createTRPCRouter({
       })
     )
     .query(({ ctx, input }) =>
-      ctx.prisma.post.findMany({
-        where: {
-          authorId: input.userId,
-        },
-        take: 100,
-        orderBy: [
-          {
-            createdAt: "desc",
+      ctx.prisma.post
+        .findMany({
+          where: {
+            authorId: input.userId,
           },
-        ],
-      }).then(addUserDataToPost)
+          take: 100,
+          orderBy: [
+            {
+              createdAt: "desc",
+            },
+          ],
+        })
+        .then(addUserDataToPosts)
     ),
 
   create: privateProcedure
